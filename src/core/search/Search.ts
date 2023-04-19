@@ -2,8 +2,8 @@ import { EinSearchResponse, PlayableType } from '../../@types/types';
 import { Spotify } from './Spotify';
 import { Apple } from './Apple';
 import { YouTube } from './YouTube';
-import { Context } from '../../../build/core';
 import EinClient from '../EinClient';
+import Context from "../Context";
 
 export class Search
 {
@@ -28,17 +28,19 @@ export class Search
                 textQueries.push(x);
         });
 
-        const appleSearchResponses : Promise<EinSearchResponse[]> = Apple.search(urls.filter(x => Search.AppleRegex.test(x)));
-        const youtubeSearchResponses: Promise<EinSearchResponse[]> = YouTube.search(urls.filter(x => Search.YouTubeRegex.test(x)));
-        const spotifySearchResponses : Promise<EinSearchResponse[]> = Spotify.search(queries, urls.filter(x => Search.SpotifyRegex.test(x)));
+        const promises : Promise<EinSearchResponse[]>[] = [];
+        if(urls.length > 0)
+        {
+            promises.push(Apple.search(urls.filter(x => Search.AppleRegex.test(x))));
+            promises.push(YouTube.search(urls.filter(x => Search.YouTubeRegex.test(x))));
+        }
+        promises.push(Spotify.search(textQueries, urls.filter(x => Search.SpotifyRegex.test(x))));
 
-        const result : EinSearchResponse[] = await Promise.all([
-            appleSearchResponses,
-            youtubeSearchResponses,
-            spotifySearchResponses,
-        ]).then(x => x.flat());
 
-        EinClient.instance.logger.success(`Search Complete: ${result}`);
+        const result : EinSearchResponse[] = await Promise.all(promises).then(x => x.flat());
+
+        EinClient.instance.logger.success('Search Complete. Results:');
+        EinClient.instance.logger.success(result);
 
         return result;
     }

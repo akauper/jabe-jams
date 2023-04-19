@@ -57,15 +57,18 @@ export default class Autoplay extends Command
 
     public async run(client: EinClient, ctx : Context, args : string[]) : Promise<void>
     {
+        if(!client.config.databaseSettings.enableDatabase)
+            return ctx.sendSimpleErrorMessage('Cannot use Autoplay when database is disabled');
+
         const queue = await Queue.getOrCreate(ctx.guildMember);
         const embed = client.embed();
-        const autoplay = queue.endlessActive;
+        const autoplay = queue.autoplayActive;
 
         if(!autoplay)
         {
-            embed.setDescription('Autoplay has been enabled').setColor(client.color.main);
+            embed.setDescription('Autoplay has been enabled. Please wait while recommendations are found.').setColor(client.color.main);
             if(!args || args.length == 0)
-                queue.beginEndlessMode(queue, ctx);
+                queue.startAutoplay(queue, ctx);
             else
             {
                 let autoplayData : AutoplayData;
@@ -85,13 +88,13 @@ export default class Autoplay extends Command
                     }
                 }
 
-                queue.beginEndlessMode(autoplayData, ctx);
+                queue.startAutoplay(autoplayData, ctx);
             }
         }
         else
         {
             embed.setDescription('Autoplay has been disabled').setColor(client.color.main);
-            queue.endEndlessMode();
+            queue.stopAutoplay();
         }
         return ctx.sendMessage({ embeds: [embed] });
     }

@@ -46,8 +46,8 @@ export class Spotify
     //TODO: Use DB Caching to search
     public static async search(queries : string[], urls : string[]) : Promise<EinSearchResponse[]>
     {
-        const haveQueries : boolean = queries && queries.length !== 0;
-        const haveUrls : boolean = urls && urls.length !== 0;
+        const haveQueries : boolean = queries && queries.length != 0;
+        const haveUrls : boolean = urls && urls.length != 0;
         if (!haveQueries && !haveUrls)
             return [{ query: null, queryType: 'text', queryPlatform: 'spotify', code: SearchCode.InvalidQuery }];
 
@@ -177,11 +177,11 @@ export class Spotify
 
             if(response.type === 'track')
                 playable = await this.fullTrackToPlayable(response);
-            if(response.type === 'album')
+            else if(response.type === 'album')
                 playable = await this.fullAlbumToPlayable(response);
-            if(response.type === 'artist')
+            else if(response.type === 'artist')
                 playable = await this.fullArtistToPlayable(response);
-            if(response.type === 'playlist')
+            else if(response.type === 'playlist')
                 playable = await this.fullPlaylistToPlayable(response);
             else
                 return { query: query, queryType: 'URL', queryPlatform: 'spotify', code: SearchCode.InvalidURL };

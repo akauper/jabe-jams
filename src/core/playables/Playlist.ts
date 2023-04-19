@@ -1,7 +1,6 @@
 import { User } from 'discord.js';
 import {
     EinSearchResponse,
-    EndlessRequestTypes,
     PlaylistData,
     StreamableData,
     TrackInteraction

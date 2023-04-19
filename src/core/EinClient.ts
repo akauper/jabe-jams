@@ -63,6 +63,10 @@ export default class EinClient extends Client
 
     public async start(token: string) : Promise<string>
     {
+        // console.log('start');
+        // console.log(this.config);
+        // console.log('after config');
+
         this.loadCommands();
         this.logger.info('Successfully loaded commands!');
         this.loadEvents();
@@ -142,7 +146,7 @@ export default class EinClient extends Client
             }
             catch (error)
             {
-                this.logger.error(error);
+                this.logger.error(`AAB - ${error}`);
             }
         });
     }

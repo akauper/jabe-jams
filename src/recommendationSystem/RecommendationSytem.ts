@@ -1,6 +1,6 @@
 import { EinSearchResponse, EndlessSeedTypes, SearchCode, TargetFeatureValues } from '../@types/types.js';
 import { EinClient, Queue, Streamable } from '../core/index.js';
-import { User } from 'discord.js';
+import {User, VoiceBasedChannel, VoiceChannel} from 'discord.js';
 import { UserEntity, UserEntityInteraction } from './databaseEntities/UserEntity.js';
 import { PlaylistEntity } from './databaseEntities/PlaylistEntity.js';
 import { TrackEntity } from './databaseEntities/TrackEntity.js';
@@ -13,7 +13,7 @@ import RecommendationsOptionsObject = SpotifyApi.RecommendationsOptionsObject;
 
 export class RecommendationSytem
 {
-    public static async recommend(seed : EndlessSeedTypes, ctx : Context, hardLimit? : number) : Promise<Playable[]>
+    public static async recommend(seed : EndlessSeedTypes, ctx : Context, voiceChannel : VoiceBasedChannel, limit? : number) : Promise<Playable[]>
     {
         const minTrackEntitiesForAudioFeatures = 5;
 
@@ -28,27 +28,21 @@ export class RecommendationSytem
         {
             if(!databaseEnabled)
             {
-                ctx.sendSimpleErrorMessage(`Cannot start autoplay for user[${seed}] - Requires database to be enabled.`);
+                ctx?.sendSimpleErrorMessage(`Cannot start autoplay for user[${seed}] - Requires database to be enabled.`);
                 return;
             }
             const userEntity = await DatabaseManager.instance.getUserById(seed.id);
             if(userEntity == null)
             {
-                ctx.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have any rated tracks.`)
+                ctx?.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have any rated tracks.`)
                 return;
             }
-            return this.recommend(userEntity, ctx, hardLimit);
+            return this.recommend(userEntity, ctx, voiceChannel, limit);
         }
         else if(seed instanceof Queue)
         {
             const queueStreamables = seed.playables.concat(seed.playableHistory).flatMap(x => x.streamables);
-            seedTrackIds = queueStreamables.map(x => x.spotifyId);;
-
-            if(databaseEnabled)
-            {
-                const queueTrackEntities = await DatabaseManager.instance.getOrAddTrackEntities(...queueStreamables);
-                targetFeatureValues = this.calculateTargetFeatureValues(queueTrackEntities);
-            }
+            seedTrackIds = queueStreamables.map(x => x.spotifyId);
         }
         else if(seed instanceof PlaylistEntity)
         {
@@ -79,7 +73,7 @@ export class RecommendationSytem
                 + sortedTrackRatings.filter(x => x.rating > 0).length;
             if(totalCount < 3)
             {
-                ctx.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have enough liked tracks or artists.`)
+                ctx?.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have enough liked tracks or artists.`)
                 return;
             }
 
@@ -90,13 +84,17 @@ export class RecommendationSytem
         }
         else if(seed instanceof Playable)
         {
+            if(seed.playableType === 'artist')
+                seedArtistIds = [seed.spotifyId];
+            if(seed.playableType === 'album' && seed.streamables[0].album)
+                seedGenres = seed.streamables[0].album.genres;
             seedTrackIds = seed.streamables.map(x => x.spotifyId);
         }
         else if(Array.isArray(seed))
         {
             if(seed.length == 0)
             {
-                ctx.sendSimpleErrorMessage(`Cannot start autoplay for an empty array of items.`);
+                ctx?.sendSimpleErrorMessage(`Cannot start autoplay for an empty array of items.`);
                 return;
             }
 
@@ -157,10 +155,62 @@ export class RecommendationSytem
                 seedArtistIds = tempArtistIds;
         }
 
-        if(!targetFeatureValues && databaseEnabled)
+        if(databaseEnabled)
         {
-            const trackEntities = await DatabaseManager.instance.getTracksBySpotifyIds(seedTrackIds);
-            targetFeatureValues = this.calculateTargetFeatureValues(trackEntities);
+            const memberIds = voiceChannel.members.map(x => x.id);
+            const userEntities = await DatabaseManager.instance.getUsersByIds(memberIds);
+
+            function getAverageTrackRating(trackEntity : TrackEntity) : number
+            {
+                let count = 0;
+                let totalRating = 0;
+
+                for (let userEntity of userEntities)
+                {
+                    const rating = userEntity.trackRatings.find(x => x.id == trackEntity.id);
+                    if(rating)
+                    {
+                        count++;
+                        totalRating += rating.rating;
+                    }
+                }
+                if(count == 0)
+                    return 0;
+                return totalRating / count;
+            }
+
+            const existingTrackEntities = await DatabaseManager.instance.getTracksBySpotifyIds(seedTrackIds);
+            const mappedTrackEntities = seedTrackIds.map(x =>
+            {
+                const trackEntity = existingTrackEntities.find(t => t.id == x);
+                if(trackEntity)
+                    return { trackId: x, trackEntity: trackEntity, rating: getAverageTrackRating(trackEntity) };
+
+                return {trackId: x, trackEntity: null, rating: null }
+            });
+
+            if(!targetFeatureValues && existingTrackEntities.length > minTrackEntitiesForAudioFeatures)
+            {
+                targetFeatureValues = this.calculateTargetFeatureValues(existingTrackEntities);
+            }
+
+            const sorted = mappedTrackEntities.sort((n1, n2) =>
+            {
+                if(!n1.rating && !n2.rating)
+                    return 0;
+
+                if(!n1.rating && n2.rating)
+                    return -1;
+                if(n1.rating && !n2.rating)
+                    return 1;
+                if(n1.rating > n2.rating)
+                    return 1;
+                if(n1.rating < n2.rating)
+                    return -1;
+                return 0;
+            });
+
+            seedTrackIds = sorted.map(x => x.trackId);
         }
 
         if(seedTrackIds)
@@ -171,29 +221,24 @@ export class RecommendationSytem
             seedGenres = seedGenres.slice(0, 5);
 
         const recommendationOptions : RecommendationsOptionsObject = {
-            limit: hardLimit,
+            limit: limit ? limit : 5,
             seed_artists: seedArtistIds,
             seed_tracks: seedTrackIds,
             seed_genres: seedGenres,
-            target_acousticness: targetFeatureValues ? targetFeatureValues.target_acousticness : null,
-            target_danceability: targetFeatureValues ? targetFeatureValues.target_danceability : null,
-            target_energy: targetFeatureValues ? targetFeatureValues.target_energy : null,
-            target_instrumentalness: targetFeatureValues ? targetFeatureValues.target_instrumentalness : null,
-            target_liveness: targetFeatureValues ? targetFeatureValues.target_liveness : null,
+            target_acousticness: targetFeatureValues ? targetFeatureValues.target_acousticness : undefined,
+            target_danceability: targetFeatureValues ? targetFeatureValues.target_danceability : undefined,
+            target_energy: targetFeatureValues ? targetFeatureValues.target_energy : undefined,
+            target_instrumentalness: targetFeatureValues ? targetFeatureValues.target_instrumentalness : undefined,
+            target_liveness: targetFeatureValues ? targetFeatureValues.target_liveness : undefined,
             // target_loudness: targetFeatureValues.target_loudness,
             // target_popularity: targetFeatureValues.target_popularity,
-            target_speechiness: targetFeatureValues ? targetFeatureValues.target_speechiness : null,
-            target_tempo: targetFeatureValues ? targetFeatureValues.target_tempo : null,
+            target_speechiness: targetFeatureValues ? targetFeatureValues.target_speechiness : undefined,
+            target_tempo: targetFeatureValues ? targetFeatureValues.target_tempo : undefined,
             // target_time_signature: targetFeatureValues.target_time_signature,
-            target_valence: targetFeatureValues ? targetFeatureValues.target_valence : null,
+            target_valence: targetFeatureValues ? targetFeatureValues.target_valence : undefined,
         }
 
         return Spotify.getRecommendationsFromSeedOptions(recommendationOptions);
-    }
-
-    private static CalculateRecommendationsLimit()
-    {
-
     }
 
     private normalize(value: number, min: number, max: number): number
@@ -290,5 +335,27 @@ export class RecommendationSytem
             // target_time_signature: averageTimeSignature,
             target_valence: averageValence,
         };
+    }
+
+    private async getChannelAverageStreamableRatings(voiceChannel : VoiceBasedChannel, streamables : Streamable[])
+    {
+        const memberIds = voiceChannel.members.map(x => x.id);
+        const userEntities = await DatabaseManager.instance.getUsersByIds(memberIds);
+        return streamables.map(s =>
+        {
+            let rating : number = 0;
+            let count : number = 0;
+            userEntities.forEach(x =>
+            {
+                const trackRating = x.trackRatings.find(x => x.id = s.spotifyId);
+                rating += trackRating.rating;
+                count++;
+            });
+            rating = count == 0 ? 1 : rating / count;
+            return {
+                streamable: s,
+                rating: rating,
+            };
+        });
     }
 }

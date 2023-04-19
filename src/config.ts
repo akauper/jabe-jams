@@ -35,15 +35,6 @@ export default {
         yellow: 0xffff00,
         main: 0x2f3136,
     },
-
-    lavalink: [
-        {
-            url: process.env.LAVALINK_URL,
-            auth: process.env.LAVALINK_AUTH,
-            name: process.env.LAVALINK_NAME,
-            secure: parseBoolean(process.env.LAVALINK_SECURE) || false,
-        },
-    ],
 };
 
 function parseBoolean(value: string | undefined): boolean

@@ -11,21 +11,22 @@ export default class Play extends Command
             {
                 name: 'play',
                 description: {
-                    content: `Plays a song from YouTube or Spotify.
-Use the following prefixes to specify your search:
-  - track:
-  - artist:
-  - album:
-  - playlist:
-These prefixes can be used in conjunction with each other: 'track:vamp anthem artist:playboi carti
-Use comma dillineation to search for multiple things: 'track:vamp anthem artist:playboi carti, track:m1 stinger artist: gladiator`,
+                    content: 'Plays a song from YouTube, Apple, or Spotify',
+//                     content: `Plays a song from YouTube or Spotify.
+// Use the following prefixes to specify your search:
+//   - track:
+//   - artist:
+//   - album:
+//   - playlist:
+// These prefixes can be used in conjunction with each other: 'track:vamp anthem artist:playboi carti
+// Use comma dillineation to search for multiple things: 'track:vamp anthem artist:playboi carti, track:m1 stinger artist: gladiator`,
                     examples: [
                         'play https://www.youtube.com/watch?v=QH2-TGUlwu4',
                         'play https://open.spotify.com/track/6WrI0LAC5M1Rw2MnX2ZvEg',
                         'play Vamp Anthem',
-                        'play track:Vamp Anthem artist:Playboi Carti',
-                        'play track:Vamp Anthem artist:Playboi Carti, track:m1 stinger artist: gladiator',
-                        'play Vamp Anthem, M1 Stinger'
+                        // 'play track:Vamp Anthem artist:Playboi Carti',
+                        // 'play track:Vamp Anthem artist:Playboi Carti, track:m1 stinger artist: gladiator',
+                        // 'play Vamp Anthem, M1 Stinger'
                     ],
                     usage: 'play <song artist album or playlist>',
                 },
@@ -81,6 +82,7 @@ Use comma dillineation to search for multiple things: 'track:vamp anthem artist:
         const vc = ctx.member as any;
 
         const res = await Search.search(query, ctx);
+        console.log(res);
         const successResponses = res.filter(x => x.code == SearchCode.Success && x.playable != null);
         const errorResponses = res.filter(x => x.code != SearchCode.Success);
 

@@ -72,9 +72,8 @@ export class YouTube
     // Never want to get playable from a YT URL because its hard to spotify search it :(
     public static async search(urls: string[]): Promise<EinSearchResponse[]>
     {
-        if (!urls || urls.length === 0)
-            return [{ query: null, queryType: 'URL', queryPlatform: 'spotify', code: SearchCode.InvalidURL }];
-
+        if (!urls || urls.length == 0)
+            return [];
 
         const r = await Promise.all(urls.map(async url =>
         {

@@ -1,8 +1,16 @@
 import EinClient from './EinClient.js';
-import { ChannelType, Guild, GuildMember, GuildMemberResolvable, Snowflake, User, VoiceChannel } from 'discord.js';
+import {
+    ChannelType,
+    Guild,
+    GuildMember,
+    GuildMemberResolvable,
+    Snowflake,
+    User,
+    VoiceBasedChannel,
+    VoiceChannel
+} from 'discord.js';
 import VoiceStream from './VoiceStream.js';
 import {
-    AutoplayData,
     EinSearchResponse,
     EndlessSeedTypes,
     InteractionType,
@@ -34,11 +42,10 @@ import { UserEntity } from '../recommendationSystem/databaseEntities/UserEntity'
 
 interface AutoplayData
 {
-    playablesSeed : Playable[],
     originalSeed : EndlessSeedTypes;
     requester : User,
     data : any,
-    trackRatings : { streamable: StreamableData, rating : number}[]
+    // trackRatings : { streamable: StreamableData, rating : number}[]
 }
 
 export default class Queue
@@ -83,9 +90,7 @@ export default class Queue
 
     public get currentPlayable() { return this.playables[0]; }
 
-
-
-    public get endlessActive() { return this._endlessModeActive; }
+    public get autoplayActive() { return this._autoplayActive; }
 
     private constructor (client: EinClient, guild : Guild)
     {
@@ -265,13 +270,13 @@ export default class Queue
             return;
         }
 
-        if(this._endlessModeActive)
+        if(this._autoplayActive)
         {
             const totalRemainingStreamables : Streamable[] = this.playables.flatMap(x => x.streamables);
             if(totalRemainingStreamables.length < 3)
             {
-                const newPlayables : Playable[] = await this.getEndlessPlayables(3);
-                this.addPlayables(newPlayables, this._endlessRequestedBy, this._endlessData);
+                const newPlayables : Playable[] = await RecommendationSytem.recommend(this, null, this.voiceChannel, 3);
+                this.addPlayables(newPlayables, this._autoplayData.requester, this._autoplayData.data);
             }
         }
 
@@ -297,390 +302,34 @@ export default class Queue
         return this.currentPlayable;
     }
 
-
-
-    // public async beginEndlessMode(seed : EndlessSeedTypes, ctx : Context, data? : unknown) : Promise<Playable>
-    // {
-    //     const spotifyConnection = await ExternalConnections.getSpotifyConnection();
-    //
-    //     if(seed instanceof User)
-    //     {
-    //         if(!this.client.config.databaseSettings.enableDatabase)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for user[${seed}] - Requires database to be enabled.`);
-    //             return;
-    //         }
-    //         const userEntity = await DatabaseManager.instance.getUserById(seed.id);
-    //         if(userEntity == null)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have any rated tracks.`)
-    //             return;
-    //         }
-    //         const trackRatings = userEntity.getSortedTrackRatings();
-    //         if(trackRatings.length < 3 || trackRatings.filter(x => x.rating > 0).length < 3)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have enough liked tracks.`)
-    //             return;
-    //         }
-    //         const tracks = await DatabaseManager.instance.getTracksBySpotifyIds(trackRatings.map(x => x.id));
-    //         this._endlessSeed = tracks.flatMap(x => x.toPlayable().streamables);
-    //     }
-    //     else if(seed instanceof Queue)
-    //     {
-    //         this._endlessSeed = seed.playables
-    //             .flatMap(x => x.streamables)
-    //             .concat(seed.playableHistory.flatMap(x => x.streamables));
-    //     }
-    //     else if(seed instanceof PlaylistEntity)
-    //     {
-    //         this._endlessSeed = (await seed.toPlayable()).streamables;
-    //     }
-    //     else if(seed instanceof ArtistEntity)
-    //     {
-    //         if(!spotifyConnection)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for Artist [${seed.name}]. Internal error connecting to Spotify.`)
-    //             return;
-    //         }
-    //
-    //
-    //         const spotifyArtist = (await spotifyConnection.getArtist(seed.id)).body;
-    //         if(!spotifyArtist)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot begin autoplay for Artist [${seed.name}]. Cannot find artist on spotify.`);
-    //             return;
-    //         }
-    //         this._endlessSeed = (await Spotify.fullArtistToPlayable(spotifyArtist)).streamables;
-    //     }
-    //     else if(seed instanceof AlbumEntity)
-    //     {
-    //         const spotifyConnection = await ExternalConnections.getSpotifyConnection();
-    //         if(!spotifyConnection)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for Album [${seed.name}]. Internal error connecting to Spotify.`)
-    //             return;
-    //         }
-    //         const spotifyAlbum = (await spotifyConnection.getAlbum(seed.id)).body;
-    //         if(!spotifyAlbum)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot begin autoplay for Album [${seed.name}]. Cannot find album on spotify.`);
-    //             return;
-    //         }
-    //         this._endlessSeed = (await Spotify.spotifyResponseToPlayable(spotifyAlbum)).streamables;
-    //     }
-    //     else if(seed instanceof UserEntity)
-    //     {
-    //
-    //     }
-    //     else if(seed instanceof Playable)
-    //     {
-    //
-    //     }
-    //     else if(Array.isArray(seed))
-    //     {
-    //
-    //     }
-    //     else
-    //     {
-    //         //Seed is AutoplayData
-    //     }
-    // }
-
-    // public async beginEndlessMode(seed: EndlessRequestTypes, ctx : Context, data? : unknown) : Promise<Playable[]>
-    // {
-    //     function isStringArray(seed : EndlessRequestTypes)
-    //     {
-    //         if(!Array.isArray(seed))
-    //             return false;
-    //         var somethingIsNotString = false;
-    //         seed.forEach(function(item){
-    //             if(typeof item !== 'string')
-    //                 somethingIsNotString = true;
-    //         });
-    //         return !somethingIsNotString && seed.length > 0;
-    //     }
-    //
-    //     const autoplayData = <AutoplayData>seed;
-    //     if(autoplayData.track_names || autoplayData.artist_names || autoplayData.genres)
-    //     {
-    //         const spotifyApi = await ExternalConnections.getSpotifyConnection();
-    //         if(!spotifyApi)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay. Internal error connecting to Spotify.`)
-    //             return;
-    //         }
-    //
-    //         let tracks : SpotifyApi.TrackObjectFull[] = [];
-    //
-    //         if(autoplayData.track_names && autoplayData.track_names.length > 0)
-    //         {
-    //             const searchResponse = (await spotifyApi.searchTracks(autoplayData.track_names.join(', '), {
-    //                 limit: 1,
-    //             })).body;
-    //         }
-    //
-    //         const recommendations = await RecommendationSytem.getRecommendations(seed, 5);
-    //
-    //         const responsePromises = seed.map(x => spotifyApi.search(x, ['track', 'album', 'artist', 'playlist']));
-    //         const responses = await Promise.all(responsePromises);
-    //
-    //         let albums : SpotifyApi.AlbumObjectSimplified[] = [];
-    //         let artists : SpotifyApi.ArtistObjectSimplified[] = [];
-    //         let playlists : SpotifyApi.PlaylistObjectSimplified[] = [];
-    //
-    //         for (let i = 0; i < responses.length; i++)
-    //         {
-    //             const response = responses[i].body;
-    //             if(response.tracks && response.tracks.items && response.tracks.items.length > 0)
-    //                 tracks.push(...response.tracks.items);
-    //             if(response.albums && response.albums.items && response.albums.items.length > 0)
-    //                 albums.push(...response.albums.items);
-    //             if(response.artists && response.artists.items && response.artists.items.length > 0)
-    //                 artists.push(...response.artists.items);
-    //             if(response.playlists && response.playlists.items && response.playlists.items.length > 0)
-    //                 playlists.push(...response.playlists.items);
-    //         }
-    //
-    //         const streamables : Streamable[] = [];
-    //         if(tracks.length > 0)
-    //         {
-    //             const trackPlayables = await Spotify.tracksToPlayables(tracks);
-    //             if(trackPlayables && trackPlayables.length > 0)
-    //                 streamables.push(...trackPlayables.flatMap(x => x.streamables));
-    //         }
-    //         if(albums.length > 0)
-    //         {
-    //             const albumPlayables = await Spotify.albumsToPlayables(albums);
-    //             if(albumPlayables && albumPlayables.length > 0)
-    //                 streamables.push(...albumPlayables.flatMap(x => x.streamables));
-    //         }
-    //         if(artists.length > 0)
-    //         {
-    //             const artistPlayables = await Spotify.artistsToPlayables(artists);
-    //             if(artistPlayables && artistPlayables.length > 0)
-    //                 streamables.push(...artistPlayables.flatMap(x => x.streamables));
-    //         }
-    //         //TODO: Playlists
-    //
-    //         this._endlessSeed = streamables;
-    //     }
-    //     else if (seed instanceof Queue)
-    //     {
-    //         this._endlessSeed = seed.playables
-    //             .flatMap(x => x.streamables)
-    //             .concat(seed.playableHistory.flatMap(x => x.streamables));
-    //     }
-    //     else if (seed instanceof PlaylistEntity)
-    //     {
-    //         this._endlessSeed = (await seed.toPlayable()).streamables;
-    //     }
-    //     else if(seed instanceof User)
-    //     {
-    //         const userEntity = await DatabaseManager.instance.getUserById(seed.id);
-    //         if(userEntity == null)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have any rated tracks.`)
-    //             return;
-    //         }
-    //         const trackRatings = userEntity.getSortedTrackRatings();
-    //         if(trackRatings.length < 3 || trackRatings.filter(x => x.rating > 0).length < 3)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for user [${seed}] - User does not have enough liked tracks.`)
-    //             return;
-    //         }
-    //
-    //         const tracks = await DatabaseManager.instance.getTracksBySpotifyIds(trackRatings.map(x => x.id));
-    //         this._endlessSeed = tracks.flatMap(x => x.toPlayable().streamables);
-    //     }
-    //     else if(seed instanceof AlbumEntity)
-    //     {
-    //         const spotifyConnection = await ExternalConnections.getSpotifyConnection();
-    //         if(!spotifyConnection)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for Album [${seed.name}]. Internal error connecting to Spotify.`)
-    //             return;
-    //         }
-    //         const spotifyAlbum = (await spotifyConnection.getAlbum(seed.id)).body;
-    //         if(!spotifyAlbum)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot begin autoplay for Album [${seed.name}]. Cannot find album on spotify.`);
-    //             return;
-    //         }
-    //
-    //         this._endlessSeed = (await Spotify.spotifyResponseToPlayable(spotifyAlbum)).streamables;
-    //     }
-    //     else if(seed instanceof ArtistEntity)
-    //     {
-    //         const spotifyConnection = await ExternalConnections.getSpotifyConnection();
-    //         if(!spotifyConnection)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot start autoplay for Artist [${seed.name}]. Internal error connecting to Spotify.`)
-    //             return;
-    //         }
-    //         const spotifyArtist = (await spotifyConnection.getArtist(seed.id)).body;
-    //         if(!spotifyArtist)
-    //         {
-    //             ctx.sendSimpleErrorMessage(`Cannot begin autoplay for Artist [${seed.name}]. Cannot find artist on spotify.`);
-    //             return;
-    //         }
-    //
-    //         this._endlessSeed = (await Spotify.spotifyArtistResponseToAlbumPlayables(spotifyArtist)).flatMap(x => x.streamables);
-    //     }
-    //     else
-    //     {
-    //         // const user = await DatabaseManager.instance.getUserById(seed.id);
-    //         // const trackRatings = user.getSortedTrackRatings().map(x => x.id);
-    //         // this._endlessSeed = trackRatings.slice(0, Math.min(trackRatings.length, 5));
-    //         throw 'not implemented';
-    //     }
-    //
-    //     this._endlessModeActive = true;
-    //     this._endlessRequestedBy = ctx.author;
-    //     this._endlessData = data;
-    //
-    //     this._endlessTrackRating = [];
-    //
-    //     const voiceChannel = ctx.guildMember.voice.channel;
-    //     const memberIds = voiceChannel.members.map(x => x.id);
-    //     const userEntities = await DatabaseManager.instance.getUsersByIds(memberIds);
-    //     const seedRatings = this._endlessSeed.map(s =>
-    //     {
-    //         let rating : number = 0;
-    //         let count : number = 0;
-    //         userEntities.forEach(x =>
-    //         {
-    //             const trackRating = x.trackRatings.find(x => x.id = s.spotifyId);
-    //             rating += trackRating.rating;
-    //             count++;
-    //         });
-    //         rating = count == 0 ? 1 : rating / count;
-    //
-    //         return {
-    //             streamable: s,
-    //             rating: rating,
-    //         };
-    //     });
-    //
-    //
-    //     this._endlessTrackRating.push(...seedRatings);
-    //
-    //     const playables : Playable[] = (await this.getEndlessPlayables(3));
-    //
-    //     this._endlessTrackRating.push(...playables.flatMap(x => x.streamables).map(x =>
-    //     {
-    //         return {
-    //             streamable: x,
-    //             rating: 1,
-    //         };
-    //     }));
-    //
-    //     this.client.emit('endlessStart', ctx, this._endlessSeed);
-    //
-    //     this.addPlayables(playables, ctx.author, data);
-    //
-    //     return playables;
-    // }
-
-    public async beginEndlessMode(seed : EndlessSeedTypes, ctx : Context, data? : unknown)
+    public async startAutoplay(seed : EndlessSeedTypes, ctx : Context, data? : unknown)
     {
-        const seedPlayables = await RecommendationSytem.recommend(seed, ctx, 5);
-
+        const seedPlayables = await RecommendationSytem.recommend(seed, ctx, ctx.guildMember.voice.channel, 3);
         if(!seedPlayables || seedPlayables.length === 0)
         {
-            ctx.sendSimpleErrorMessage('Unknown error. Failed starting endless mode');
+            ctx.sendSimpleErrorMessage('Unknown error. Failed starting Autoplay');
             return;
         }
 
         this._autoplayActive = true;
         this._autoplayData = {
-            playablesSeed: seedPlayables,
             originalSeed: seed,
             requester: ctx.author,
             data: data,
-            trackRatings: []
         };
 
-        const voiceChannel = ctx.guildMember.voice.channel;
-        const memberIds = voiceChannel.members.map(x => x.id);
-        const userEntities = await DatabaseManager.instance.getUsersByIds(memberIds);
-        const seedRatings = this._autoplayData.playablesSeed.map(s =>
-        {
-            let rating : number = 0;
-            let count : number = 0;
-            userEntities.forEach(x =>
-            {
-                const trackRating = x.trackRatings.find(x => x.id = s.spotifyId);
-                rating += trackRating.rating;
-                count++;
-            });
-            rating = count == 0 ? 1 : rating / count;
-            return {
-                streamable: s,
-                rating: rating,
-            };
-        });
-        this._endlessTrackRating.push(...seedRatings);
-        const playables : Playable[] = (await this.getEndlessPlayables(3));
-        this._endlessTrackRating.push(...playables.flatMap(x => x.streamables).map(x =>
-        {
-            return {
-                streamable: x,
-                rating: 1,
-            };
-        }));
-        this.client.emit('endlessStart', ctx, this._endlessSeed);
-        this.addPlayables(playables, ctx.author, data);
-        return playables;
+        this.client.emit('endlessStart', ctx, this._autoplayData);
 
+        const lengthBefore = this.playables.length;
+        this.addPlayables(seedPlayables, ctx.author, data);
+        if(lengthBefore === 0)
+            await this.playNext();
     }
 
-    public endEndlessMode()
+    public stopAutoplay()
     {
-        this._endlessModeActive = false;
-        this._endlessSeed = null;
-        this._endlessTrackRating = [];
-        this._endlessData = null;
-    }
-
-    private async getEndlessPlayables(count : number) : Promise<Playable[]>
-    {
-        if(count > 100)
-        {
-            this.client.logger.error('Cannot get more endless. Past 100');
-            return;
-        }
-
-        if(!this._autoplayActive || !DatabaseManager.instance)
-        {
-            this.client.logger.error('Cannot getEndlessPlayables: Either endless more is not enabled or we are not connected to the database');
-            return;
-        }
-
-        function sortFunction(trackRatingA, trackRatingB) : number
-        {
-            return trackRatingB.rating - trackRatingA.rating;
-        }
-
-        let sortedStreamables : StreamableData[] = this._autoplayData.trackRatings.filter(x => x.rating > 1)
-            .sort(sortFunction)
-            .map(x => x.streamable);
-        sortedStreamables = sortedStreamables.slice(0, Math.min(sortedStreamables.length, 5));
-        const recommendedStreamables : Streamable[] = await RecommendationSytem.recommend(sortedStreamables, count);
-
-        const playables : Playable[] = recommendedStreamables.map(x => x.toPlayable()).filter(p =>
-        {
-            if(this.playableHistory.map(y => y.spotifyId).includes(p.spotifyId))
-                return false;
-            if(this.playables.map(x => x.spotifyId).includes(p.spotifyId))
-                return false;
-            return true;
-        });
-
-        if(playables.length <= 3)
-            return this.getEndlessPlayables(count + 5);
-
-        playables.forEach(x => x.data = this._endlessData);
-        return playables;
+        this._autoplayActive = false;
+        this._autoplayData = null;
     }
 
 
@@ -706,9 +355,7 @@ export default class Queue
     public stop()
     {
         this.playables = [];
-        this._endlessModeActive = false;
-        this._endlessTrackRating = [];
-        this._endlessSeed = [];
+        this.stopAutoplay();
         this.skip();
     }
 

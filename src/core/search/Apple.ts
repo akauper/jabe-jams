@@ -26,7 +26,7 @@ export class Apple
 
     public static async search(urls: string[]): Promise<EinSearchResponse[]>
     {
-        if (!urls || urls.length === 0)
+        if (!urls || urls.length == 0)
             return [];
         const searches: string[] = [];
         for (const url of urls)
