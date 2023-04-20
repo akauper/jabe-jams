@@ -18,6 +18,7 @@ export interface UserEntityInteraction
     id: string;
     playCount: number;
     rating: number;
+    lastPlayDate : number;
 }
 
 @Entity({ name: 'user' })
@@ -122,6 +123,7 @@ export class UserEntity extends DatabaseEntity
                 id: entity.id,
                 playCount: 0,
                 rating: 0,
+                lastPlayDate: 0,
             };
             arr.push(obj);
         }
@@ -130,22 +132,31 @@ export class UserEntity extends DatabaseEntity
         {
         case InteractionType.Play:
             obj.playCount += 1;
+            obj.lastPlayDate = Date.now();
             break;
         case InteractionType.Skip:
             obj.playCount -= 1;
             break;
         case InteractionType.Like:
             obj.rating += 1;
+            obj.rating = clamp(obj.rating, -4, 4);
             break;
         case InteractionType.Love:
             obj.rating += 2;
+            obj.rating = clamp(obj.rating, -4, 4);
             break;
         case InteractionType.Dislike:
             obj.rating -= 1;
+            obj.rating = clamp(obj.rating, -4, 4);
             break;
         case InteractionType.Hate:
             obj.rating -= 2;
+            obj.rating = clamp(obj.rating, -4, 4);
             break;
+        }
+
+        function clamp(value: number, min: number, max: number): number {
+            return Math.min(Math.max(value, min), max);
         }
     }
 }

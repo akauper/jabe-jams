@@ -31,7 +31,7 @@ import {
 } from '@discordjs/voice';
 import { createDiscordJSAdapter } from './adapter.js';
 import Streamable from './playables/Streamable.js';
-import { RecommendationSytem } from '../recommendationSystem/RecommendationSytem.js';
+import { RecommendationSystem } from '../recommendationSystem/RecommendationSystem';
 import { Search } from './search/Search';
 import { PlaylistEntity } from '../recommendationSystem/databaseEntities/PlaylistEntity.js';
 import { AlbumEntity } from '../recommendationSystem/databaseEntities/AlbumEntity.js';
@@ -275,7 +275,7 @@ export default class Queue
             const totalRemainingStreamables : Streamable[] = this.playables.flatMap(x => x.streamables);
             if(totalRemainingStreamables.length < 3)
             {
-                const newPlayables : Playable[] = await RecommendationSytem.recommend(this, null, this.voiceChannel, 3);
+                const newPlayables : Playable[] = await RecommendationSystem.recommend(this, null, this.voiceChannel, 3);
                 this.addPlayables(newPlayables, this._autoplayData.requester, this._autoplayData.data);
             }
         }
@@ -304,7 +304,7 @@ export default class Queue
 
     public async startAutoplay(seed : EndlessSeedTypes, ctx : Context, data? : unknown)
     {
-        const seedPlayables = await RecommendationSytem.recommend(seed, ctx, ctx.guildMember.voice.channel, 3);
+        const seedPlayables = await RecommendationSystem.recommend(seed, ctx, ctx.guildMember.voice.channel, 3);
         if(!seedPlayables || seedPlayables.length === 0)
         {
             ctx.sendSimpleErrorMessage('Unknown error. Failed starting Autoplay');
