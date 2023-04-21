@@ -7,6 +7,8 @@ import { AlbumEntity } from '../recommendationSystem/databaseEntities/AlbumEntit
 import { Album, Artist, Playlist, Track } from 'spotify-uri';
 import { TextSearchQuery } from '../core/search/TextSearchQuery';
 import { UserEntity } from '../recommendationSystem/databaseEntities/UserEntity';
+import { Context } from '../core';
+import { QueueAutoplayData } from '../core/Queue';
 
 
 export type StreamableSource = 'apple' | 'soundcloud' | 'youtube' | 'spotify' | 'arbitrary';
@@ -26,6 +28,30 @@ export type MessageGeneratorEvents =
 {
     reactionAdded: (streamable: Streamable, user: User, interactionType: InteractionType) => Awaitable;
     reactionRemoved: (streamable: Streamable, user: User, interactionType: InteractionType) => Awaitable;
+}
+
+export type QueueEvents =
+{
+    create: (queue : Queue) => Awaitable;
+    destroy: (queue : Queue) => Awaitable;
+    start: (queue : Queue) => Awaitable;
+    end: (queue : Queue) => Awaitable;
+    playableAdd: (queue : Queue, playable : Playable) => Awaitable;
+    playableRemoved: (queue : Queue, playable : Playable) => Awaitable;
+    playableStart: (queue : Queue, playable : Playable) => Awaitable;
+    playableEnd: (queue : Queue, playable : Playable) => Awaitable;
+    streamableStart: (queue : Queue, streamable : Streamable) => Awaitable;
+    streamableEnd: (queue : Queue, streamable : Streamable) => Awaitable;
+    autoplayStart: (queue : Queue, ctx : Context, data : QueueAutoplayData) => Awaitable;
+    autoplayEnd: (queue : Queue) => Awaitable;
+    clear: (queue : Queue) => Awaitable;
+    shuffle: (queue : Queue) => Awaitable;
+    repeat: (queue : Queue) => Awaitable;
+    skip: (queue : Queue) => Awaitable;
+    stop: (queue : Queue) => Awaitable;
+    pause: (queue : Queue) => Awaitable;
+    resume: (queue : Queue) => Awaitable;
+    error: (queue : Queue, error : Error) => Awaitable;
 }
 
 export interface Data

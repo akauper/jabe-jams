@@ -22,7 +22,7 @@
 // import { InteractionType, MessageGeneratorEvents } from '../@types/types';
 // import { Search } from './search/Search';
 // import EinClient from './EinClient';
-// import { RecommendationSytem } from '../recommendationSystem/RecommendationSytem';
+// import RecommendationSystem from '../recommendationSystem/RecommendationSystem';
 // import { TypedEmitter } from 'tiny-typed-emitter';
 // import Streamable from './playables/Streamable';
 // import Playable from './playables/Playable';
@@ -389,7 +389,7 @@
 //                                 components: [ MessageGenerator.pleaseWaitButton() ],
 //                             });
 //
-//                             const recommendations: Streamable[] = await RecommendationSytem.getRecommendations(playlist, 5);
+//                             const recommendations: Streamable[] = await RecommendationSystem.recommend(playlist, 5);
 //                             if (recommendations == null)
 //                             {
 //                                 await initialComponent.editReply({

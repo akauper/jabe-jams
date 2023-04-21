@@ -69,15 +69,15 @@ export class Spotify
         return results;
     }
 
-    public static parseTextQueries(...stringQueries : string[]) : TextSearchQuery[]
+    private static parseTextQueries(...stringQueries : string[]) : TextSearchQuery[]
     {
         if(!stringQueries || stringQueries.length == 0)
             return;
 
-        return stringQueries.map(x => new TextSearchQuery(x));
+        return stringQueries.map(x => TextSearchQuery.FromString(x));
     }
 
-    public static parseUrlQueries(urls : string[]) : UrlSearchQuery[]
+    private static parseUrlQueries(urls : string[]) : UrlSearchQuery[]
     {
         if(!urls || urls.length == 0)
             return;
@@ -125,7 +125,7 @@ export class Spotify
 
             const responses = await Promise.all(genericQueries.map(async x =>
             {
-                return { query: x, response: await spotifyApi.search(x.toString(), ['track', 'album', 'artist', 'playlist'], { limit: 1 }) };
+                return { query: x, response: await spotifyApi.search(x.getFormattedString(), ['track', 'album', 'artist', 'playlist'], { limit: 1 }) };
             }));
 
 
@@ -199,8 +199,8 @@ export class Spotify
 
         const responses = await Promise.all(trackQueries.map(async (x : string | TextSearchQuery) =>
         {
-            const query : TextSearchQuery = typeof x === 'string' ? new TextSearchQuery(x) : x;
-            return { query: query, response: await spotifyApi.search(query.toString(), ['track'], { limit: 1 }) };
+            const query : TextSearchQuery = typeof x === 'string' ? TextSearchQuery.FromString(x) : x;
+            return { query: query, response: await spotifyApi.search(query.getFormattedString(), ['track'], { limit: 1 }) };
         }));
 
         return await Promise.all(responses.map(async x =>
@@ -222,8 +222,8 @@ export class Spotify
 
         const responses = await Promise.all(albumQueries.map(async (x : string | TextSearchQuery) =>
         {
-            const query : TextSearchQuery = typeof x === 'string' ? new TextSearchQuery(x) : x;
-            return { query: query, response: await spotifyApi.search(query.toString(), ['album'], { limit: 1 }) };
+            const query : TextSearchQuery = typeof x === 'string' ? TextSearchQuery.FromString(x) : x;
+            return { query: query, response: await spotifyApi.search(query.getFormattedString(), ['album'], { limit: 1 }) };
         }));
 
         return await Promise.all(responses.map(async x =>
@@ -253,8 +253,8 @@ export class Spotify
 
         const responses = await Promise.all(artistQueries.map(async (x : string | TextSearchQuery) =>
         {
-            const query : TextSearchQuery = typeof x === 'string' ? new TextSearchQuery(x) : x;
-            return { query: query, response: await spotifyApi.search(query.toString(), ['artist'], { limit: 1 }) };
+            const query : TextSearchQuery = typeof x === 'string' ? TextSearchQuery.FromString(x) : x;
+            return { query: query, response: await spotifyApi.search(query.getFormattedString(), ['artist'], { limit: 1 }) };
         }));
 
         return await Promise.all(responses.map(async x =>
@@ -277,8 +277,8 @@ export class Spotify
 
         const responses = await Promise.all(playlistQueries.map(async (x : string | TextSearchQuery) =>
         {
-            const query : TextSearchQuery = typeof x === 'string' ? new TextSearchQuery(x) : x;
-            return { query: query, response: await spotifyApi.search(query.toString(), ['playlist'], { limit: 1 }) };
+            const query : TextSearchQuery = typeof x === 'string' ? TextSearchQuery.FromString(x) : x;
+            return { query: query, response: await spotifyApi.search(query.getFormattedString(), ['playlist'], { limit: 1 }) };
         }));
 
         return await Promise.all(responses.map(async x =>
@@ -423,17 +423,20 @@ export class Spotify
 
     private static async trackObjectsToStreamableData(...trackObjects: TrackObjectFull[]): Promise<StreamableData[]>
     {
+        console.log('GET TRACKS!');
+
         // This gets concat at the end
         let dbStreamables: StreamableData[] = [];
         if (DatabaseManager.instance && DatabaseManager.instance.useCachedTracksInSearch)
         {
-            console.log('GET TRACKS!');
             const dbTrackEntities = await DatabaseManager.instance.getTracksBySpotifyIds(trackObjects.map(x => x.id));
             dbStreamables = dbTrackEntities.map(x => x.toStreamable() as StreamableData);
             if (dbStreamables.length === trackObjects.length)
                 return dbStreamables;
             trackObjects = trackObjects.filter(x => !dbStreamables.map(y => y.spotifyId).includes(x.id));
         }
+
+        //console.log("END DB");
 
         const spotifyApi = await ExternalConnections.getSpotifyConnection();
         const audioFeaturesResponse : MultipleAudioFeaturesResponse =
@@ -453,12 +456,7 @@ export class Spotify
             const artistData: ArtistData = this.getArtistData(artist);
             const albumData: AlbumData = this.getAlbumData(album);
             const streamableAudioFeatures: TrackAudioFeatures = this.getTrackAudioFeatures(audioFeaturesObject);
-            const youTubeUrl: string = await YouTube.getUrlFromSearchQuery({
-                original_query: 'fff',
-                type: 'track',
-                track_name: track.name,
-                artist_name: artist.name,
-            });
+            const youTubeUrl: string = await YouTube.getUrlFromSongAndArtist(track.name, artist.name);
 
             return {
                 streamableSource: 'spotify' as StreamableSource,
@@ -477,7 +475,9 @@ export class Spotify
             };
         }));
 
-        return streamables.concat(dbStreamables);
+        console.log("END GET TRACKS");
+        return streamables;
+        //return streamables.concat(dbStreamables);
     }
 
     private static getArtistData(response: SingleArtistResponse | ArtistObjectFull | UserObjectPublic): ArtistData

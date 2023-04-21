@@ -225,21 +225,46 @@ export class YouTube
     //     }
     //     return playables;
     // }
-    public static async getUrlFromSearchQuery(query: TextSearchQuery) : Promise<string>
-    {
-        const formattedSearch: string = query.toString();
 
-        let result : YouTubeVideo | YouTubePlaylist;
-        if (query.type === 'playlist' || query.type === 'album')
-            result = await YouTubeSr.searchOne(formattedSearch, 'playlist', false);
-        else
-            result = await YouTubeSr.searchOne(formattedSearch, 'video', false);
+    public static async getUrlFromSongAndArtist(songName : string, artistName? : string) : Promise<string>
+    {
+        let formattedSearch : string = songName;
+        if(artistName)
+            formattedSearch += ` by ${artistName}`;
+
+        //let result : YouTubeVideo | YouTubePlaylist;
+        // if (query.type === 'playlist' || query.type === 'album')
+        //     result = await YouTubeSr.searchOne(formattedSearch, 'playlist', false);
+        // else
+        let result : YouTubeVideo
+        result = await YouTubeSr.searchOne(formattedSearch, 'video', false);
 
         if (!result)
             return "";
 
+        // console.log('FFFF HERE');
+        // console.log(result);
+
         return result.url;
     }
+    // public static async getUrlFromSearchQuery(query: TextSearchQuery) : Promise<string>
+    // {
+    //     const formattedSearch: string = query.getFormattedString();
+    //
+    //     let result : YouTubeVideo | YouTubePlaylist;
+    //     if (query.type === 'playlist' || query.type === 'album')
+    //         result = await YouTubeSr.searchOne(formattedSearch, 'playlist', false);
+    //     else
+    //         result = await YouTubeSr.searchOne(formattedSearch, 'video', false);
+    //
+    //     if (!result)
+    //         return "";
+    //
+    //     // console.log('FFFF HERE');
+    //     // console.log(result);
+    //
+    //     return result.url;
+    // }
     private static videosToStreamableData(videos: YtVideo[]): Streamable[]
     {
         return videos.map(video =>
@@ -332,6 +357,22 @@ export class YouTube
                     description = j.description?.runs[0]?.text;
             }
 
+            // if (description)
+            // {
+            //     const r = /\\n\\n(.*?·)(.*? ·)/;
+            //     const match = description.replaceAll('\n', '\\n').match(r);
+            //     if (match)
+            //     {
+            //         const songName = match[1].slice(0, -1).trim();
+            //         const artistName = match[2].slice(0, -1).trim();
+            //         if (!songName && !artistName)
+            //             return null;
+            //         else
+            //         {
+            //             return {original_query: url, type: 'track', track_name: songName, artist_name: artistName };
+            //         }
+            //     }
+            // }
             if (description)
             {
                 const r = /\\n\\n(.*?·)(.*? ·)/;
@@ -344,8 +385,13 @@ export class YouTube
                         return null;
                     else
                     {
-                        return {original_query: url, type: 'track', track_name: songName, artist_name: artistName };
+                        return TextSearchQuery.FromInterface({original_query: url, type: 'track', track_name: songName, artist_name: artistName });
                     }
+                }
+                else
+                {
+                    // Handle the case when the song name and artist name are not found in the description
+                    return TextSearchQuery.FromInterface({original_query: url, type: 'track', track_name: "Unknown Song", artist_name: "Unknown Artist" } );
                 }
             }
         }
@@ -390,7 +436,7 @@ export class YouTube
         if (!songName && !artistName && !albumName)
             return null;
 
-        return { original_query: url, type: 'track', track_name: songName, artist_name: artistName, album_name: albumName };
+        return TextSearchQuery.FromInterface({ original_query: url, type: 'track', track_name: songName, artist_name: artistName, album_name: albumName } );
     }
 
 

@@ -60,7 +60,7 @@ export default class Remove extends Command {
         if(Number(args[0]) == 1)
             return ctx.sendSimpleErrorMessage('Cannot remove current playing song. Use "Stop" or "Skip" command instead');
 
-        queue.remove(Number(args[0]) - 1);
+        queue.removePlayableAtIndex(Number(args[0]) - 1);
         return ctx.sendMessage({
             embeds: [
                 embed.setColor(this.client.color.main).setDescription(`Removed song number ${Number(args[0])} from the queue`),

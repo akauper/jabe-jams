@@ -12,7 +12,7 @@ import { Context, Playable } from '../core';
 import { differenceInDays } from 'date-fns';
 import RecommendationsOptionsObject = SpotifyApi.RecommendationsOptionsObject;
 
-export class RecommendationSystem
+export default class RecommendationSystem
 {
     public static async recommend(seed: EndlessSeedTypes, ctx: Context, voiceChannel: VoiceBasedChannel, limit?: number): Promise<Playable[]> {
         const client = EinClient.instance;
@@ -269,6 +269,7 @@ export class RecommendationSystem
 
     private static async sortTracksByChannelRating(trackIds : string[], voiceChannel : VoiceBasedChannel) : Promise<string[]>
     {
+        return trackIds;
         if(trackIds == null || trackIds.length == 0)
             return trackIds;
         // const databaseTracks = await DatabaseManager.instance.getTracksBySpotifyIds(trackIds);
@@ -544,10 +545,10 @@ export class RecommendationSystem
             target_valence: 0,
         };
 
-        if(!userInteractions && voiceChannel)
-        {
-            userInteractions = await this.getChannelAverageInteractions(voiceChannel);
-        }
+        // if(!userInteractions && voiceChannel)
+        // {
+        //     userInteractions = await this.getChannelAverageInteractions(voiceChannel);
+        // }
 
         let totalWeight = 0;
 

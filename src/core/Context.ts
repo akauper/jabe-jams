@@ -58,6 +58,13 @@ export default class Context
         }
     }
 
+    public get tryGetTextChannel() : TextChannel
+    {
+        if(this.channel instanceof TextChannel)
+            return this.channel as TextChannel;
+        return this.guild.channels.resolve(this.channelId) as TextChannel;
+    }
+
     public get guildMember() : GuildMember
     {
         const guildMember = this.guild.members.resolve(this.member as GuildMemberResolvable);

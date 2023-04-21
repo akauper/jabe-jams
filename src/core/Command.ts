@@ -1,17 +1,21 @@
 import { ApplicationCommandOption, PermissionResolvable } from 'discord.js';
 import EinClient from './EinClient.js';
 
+type LocalizationType = {
+    [locale: string]: string;
+};
+
 export default class Command
 {
     public client: EinClient;
     public name: string;
-    public nameLocalizations: any;
+    public nameLocalizations?: LocalizationType;
     public description: {
         content: string | null;
         usage: string | null;
         examples: string[] | null;
     };
-    public descriptionLocalizations: any | null;
+    public descriptionLocalizations?: LocalizationType;
     public aliases: string[];
     public cooldown: number;
     public args: boolean;
@@ -68,13 +72,13 @@ export default class Command
 
 interface CommandOptions {
     name: string;
-    nameLocalizations?: any;
+    nameLocalizations?: LocalizationType;
     description?: {
         content: string;
         usage: string;
         examples: string[];
     };
-    descriptionLocalizations?: any;
+    descriptionLocalizations?: LocalizationType;
     aliases?: string[];
     cooldown?: number;
     args?: boolean;

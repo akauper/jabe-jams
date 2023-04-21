@@ -86,47 +86,39 @@ export default class Play extends Command
         const successResponses = res.filter(x => x.code == SearchCode.Success && x.playable != null);
         const errorResponses = res.filter(x => x.code != SearchCode.Success);
 
-        let successDescription : string = '';
-        let errorDescription : string = '';
-
-        if(errorResponses.length > 0)
-        {
-            errorDescription += 'Errors:'
-            for (let i = 0; i < errorResponses.length; i++)
-            {
-                errorDescription += '\n';
-                errorDescription += `${(i + 1)}) `;
-                switch (errorResponses[i].code)
-                {
+        let errorDescription = errorResponses
+            .map((response, i) => {
+                const { code, codeDetails, query } = response;
+                switch (code) {
                     case SearchCode.NoMatches:
-                        errorDescription += `No matches for query '${errorResponses[i].query}'`;
-                        break;
+                        return `${i + 1}) No matches for query '${query}'`;
                     case SearchCode.InvalidURL:
-                        errorDescription += `Invalid URL '${errorResponses[i].query}'`;
-                        break;
+                        return `${i + 1}) Invalid URL '${query}'`;
                     case SearchCode.InvalidQuery:
-                        errorDescription += `Invalid query '${errorResponses[i].query}'`;
-                        break;
+                        return `${i + 1}) Invalid query '${query}'`;
                     case SearchCode.InternalDatabaseError:
-                        errorDescription += `Internal database error for query '${errorResponses[i].query}'`;
-                        break;
+                        return `${i + 1}) Internal database error for query '${query}'`;
+                    default:
+                        return '';
                 }
-                if(errorResponses[i].codeDetails && errorResponses[i].codeDetails != '')
-                    errorDescription += ` -- Details: ${errorResponses[i].codeDetails }`;
-            }
-        }
-        if(successResponses.length > 0)
-        {
-            successDescription = 'Adding';
-            const playlists : EinSearchResponse[] = [];
-            const tracks : EinSearchResponse[] = [];
-            const albums : EinSearchResponse[] = [];
-            const artists : EinSearchResponse[] = [];
+            })
+            .join('\n');
 
-            for (let response of successResponses)
-            {
-                switch(response.playable.playableType)
-                {
+        if (errorDescription) {
+            errorDescription = 'Errors:\n' + errorDescription;
+        }
+
+        let successDescription = '';
+
+        if (successResponses.length > 0) {
+            successDescription = 'Adding';
+            const playlists: EinSearchResponse[] = [];
+            const tracks: EinSearchResponse[] = [];
+            const albums: EinSearchResponse[] = [];
+            const artists: EinSearchResponse[] = [];
+
+            for (let response of successResponses) {
+                switch (response.playable?.playableType) {
                     case 'track':
                         tracks.push(response);
                         break;
@@ -143,15 +135,82 @@ export default class Play extends Command
                 }
             }
 
-            if(playlists.length > 0)
+            if (playlists.length > 0)
                 successDescription += ` ${playlists.length} Playlists with ${playlists.flatMap(x => x.playable.streamables).length} tracks`;
-            if(albums.length > 0)
+            if (albums.length > 0)
                 successDescription += ` ${albums.length} Albums with ${albums.flatMap(x => x.playable.streamables).length} tracks`;
-            if(tracks.length > 0)
+            if (tracks.length > 0)
                 successDescription += ` ${tracks.length} tracks`;
 
-            successDescription += ' to the queue.'
+            successDescription += ' to the queue.';
         }
+
+        // let successDescription : string = '';
+        // let errorDescription : string = '';
+        //
+        // if(errorResponses.length > 0)
+        // {
+        //     errorDescription += 'Errors:'
+        //     for (let i = 0; i < errorResponses.length; i++)
+        //     {
+        //         errorDescription += '\n';
+        //         errorDescription += `${(i + 1)}) `;
+        //         switch (errorResponses[i].code)
+        //         {
+        //             case SearchCode.NoMatches:
+        //                 errorDescription += `No matches for query '${errorResponses[i].query}'`;
+        //                 break;
+        //             case SearchCode.InvalidURL:
+        //                 errorDescription += `Invalid URL '${errorResponses[i].query}'`;
+        //                 break;
+        //             case SearchCode.InvalidQuery:
+        //                 errorDescription += `Invalid query '${errorResponses[i].query}'`;
+        //                 break;
+        //             case SearchCode.InternalDatabaseError:
+        //                 errorDescription += `Internal database error for query '${errorResponses[i].query}'`;
+        //                 break;
+        //         }
+        //         if(errorResponses[i].codeDetails && errorResponses[i].codeDetails != '')
+        //             errorDescription += ` -- Details: ${errorResponses[i].codeDetails }`;
+        //     }
+        // }
+        // if(successResponses.length > 0)
+        // {
+        //     successDescription = 'Adding';
+        //     const playlists : EinSearchResponse[] = [];
+        //     const tracks : EinSearchResponse[] = [];
+        //     const albums : EinSearchResponse[] = [];
+        //     const artists : EinSearchResponse[] = [];
+        //
+        //     for (let response of successResponses)
+        //     {
+        //         switch(response.playable.playableType)
+        //         {
+        //             case 'track':
+        //                 tracks.push(response);
+        //                 break;
+        //             case 'album':
+        //                 albums.push(response);
+        //                 break;
+        //             case 'playlist':
+        //             case 'userPlaylist':
+        //                 playlists.push(response);
+        //                 break;
+        //             case 'artist':
+        //                 artists.push(response);
+        //                 break;
+        //         }
+        //     }
+        //
+        //     if(playlists.length > 0)
+        //         successDescription += ` ${playlists.length} Playlists with ${playlists.flatMap(x => x.playable.streamables).length} tracks`;
+        //     if(albums.length > 0)
+        //         successDescription += ` ${albums.length} Albums with ${albums.flatMap(x => x.playable.streamables).length} tracks`;
+        //     if(tracks.length > 0)
+        //         successDescription += ` ${tracks.length} tracks`;
+        //
+        //     successDescription += ' to the queue.'
+        // }
 
 
         const embeds : EmbedBuilder[] = [];

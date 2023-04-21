@@ -36,19 +36,21 @@ export default class NowPlaying extends Command {
             return ctx.sendSimpleErrorMessage('Nothing is playing.');
         }
         const track = queue.currentPlayable;
-        const position = queue.voiceStream.streamCurrentTimeMS;
-        const duration = queue.voiceStream.currentStreamableDurationMS;
-        const bar = client.utils.progressBar(position, duration, 20);
-        const embed1 = this.client
-            .embed()
-            .setColor(this.client.color.main)
-            .setAuthor({ name: 'Now Playing', iconURL: ctx.guild.iconURL({}) })
-            .setThumbnail(track.thumbnail)
-            .setDescription(`[${track.name}](${track.url}) - Request By: ${track.requestedBy}\n\n\`${bar}\``)
-            .addFields({
-                name: '\u200b',
-                value: `\`${client.utils.formatTime(position)} / ${client.utils.formatTime(duration)}\``,
-            });
-        return ctx.sendMessage({ embeds: [embed1] });
+        // const position = queue.voiceStream.streamCurrentTimeMS;
+        // const duration = queue.voiceStream.currentStreamableDurationMS;
+        // const bar = client.utils.progressBar(position, duration, 20);
+        // const embed1 = this.client
+        //     .embed()
+        //     .setColor(this.client.color.main)
+        //     .setAuthor({ name: 'Now Playing', iconURL: ctx.guild.iconURL({}) })
+        //     .setThumbnail(track.thumbnail)
+        //     .setDescription(`[${track.name}](${track.url}) - Request By: ${track.requestedBy}\n\n\`${bar}\``)
+        //     .addFields({
+        //         name: '\u200b',
+        //         value: `\`${client.utils.formatTime(position)} / ${client.utils.formatTime(duration)}\``,
+        //     });
+        // return ctx.sendMessage({ embeds: [embed1] });
+
+        client.messageGenerator.generateTrackMessage(track, ctx);
     }
 }
